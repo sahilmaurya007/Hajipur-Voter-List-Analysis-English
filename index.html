@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ward-wise Voter Analysis</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; background: #f5f7fa; }
+    h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+    select, input { padding: 10px; margin: 8px; font-size: 16px; }
+    button { padding: 10px 20px; font-size: 16px; background: #3498db; color: white; border: none; cursor: pointer; margin-left: 8px; }
+    button:hover { background: #2980b9; }
+    #result { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .error { color: #e74c3c; }
+    .success { color: #27ae60; }
+    .names { margin-top: 12px; line-height: 1.5; background: #f9f9f9; padding: 10px; border-radius: 5px; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <h1>🏘️ Ward-wise Voter Analysis</h1>
+  
+  <div class="controls">
+    <label for="wardSelect">Select Ward:</label>
+    <select id="wardSelect">
+      <option value="">-- Choose Ward --</option>
+    </select>
+
+    <label for="houseNo">Enter House No.:</label>
+    <input type="number" id="houseNo" placeholder="e.g. 1" min="1" disabled />
+
+    <button onclick="searchVoters()">🔍 Search</button>
+  </div>
+
+  <div id="result"></div>
+
+  <script>
+    let allData = [];
+    const wardSelect = document.getElementById('wardSelect');
+    const houseInput = document.getElementById('houseNo');
+    const resultDiv = document.getElementById('result');
+
+    // Load data
+    fetch('voters.json')
+      .then(response => response.json())
+      .then(data => {
+        allData = data;
+        const wards = [...new Set(data.map(d => d.Ward))].sort((a,b) => a-b);
+        wards.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w;
+          opt.textContent = `Ward ${w}`;
+          wardSelect.appendChild(opt);
+        });
+      })
+      .catch(err => {
+        resultDiv.innerHTML = '<p class="error">❌ Failed to load voter data.</p>';
+        resultDiv.style.display = 'block';
+      });
+
+    // Enable house input only after ward is selected
+    wardSelect.addEventListener('change', () => {
+      houseInput.disabled = !wardSelect.value;
+      if (!wardSelect.value) {
+        houseInput.value = '';
+      }
+    });
+
+    function searchVoters() {
+      const ward = parseInt(wardSelect.value);
+      const house = parseInt(houseInput.value);
+
+      if (!ward || !house) {
+        resultDiv.innerHTML = '<p class="error">⚠️ Please select a Ward and enter a House Number.</p>';
+        resultDiv.style.display = 'block';
+        return;
+      }
+
+      const voters = allData.filter(d => d.Ward === ward && d.H_No === house);
+
+      if (voters.length === 0) {
+        resultDiv.innerHTML = `<p class="error">❌ No voters found in Ward ${ward}, House ${house}.</p>`;
+      } else {
+        const names = voters.map(v => v.Voter_Name).join(', ');
+        resultDiv.innerHTML = `
+          <p class="success">✅ Ward ${ward}, House ${house}</p>
+          <p><strong>Total Voters:</strong> ${voters.length}</p>
+          <p class="names"><strong>Voter Names:</strong><br>${names}</p>
+        `;
+      }
+      resultDiv.style.display = 'block';
+    }
+
+    // Allow Enter key
+    houseInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchVoters();
+    });
+  </script>
+</body>
+</html>
